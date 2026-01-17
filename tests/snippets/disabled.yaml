@@ -1,0 +1,5 @@
+file_format: 1.0-rc.3
+
+instrumentation/development:
+  php:
+    amphp_http_server: false

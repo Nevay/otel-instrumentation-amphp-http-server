@@ -1,0 +1,56 @@
+{
+  "name": "tbachert/otel-instrumentation-amphp-http-server",
+  "description": "OpenTelemetry amphp/http-server instrumentation",
+  "keywords": ["opentelemetry", "otel", "instrumentation"],
+  "license": "Apache-2.0",
+  "require": {
+    "php": "^8.2",
+    "composer-runtime-api": "^2.0",
+    "amphp/http-server": "^3.0",
+    "league/uri": "^7.0",
+    "open-telemetry/api": "^1.4",
+    "open-telemetry/context": "^1.1",
+    "open-telemetry/opentelemetry-config-http": "^0.1"
+  },
+  "require-dev": {
+    "amphp/phpunit-util": "^3.0",
+    "open-telemetry/opentelemetry-propagation-traceresponse": "^0.1",
+    "phpunit/phpunit": "^9.6",
+    "tbachert/otel-sdk": "^0.1"
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true,
+  "config": {
+    "sort-packages": true,
+    "allow-plugins": {
+      "tbachert/spi": true
+    }
+  },
+  "autoload": {
+    "psr-4": {
+      "Nevay\\OTelInstrumentation\\AmphpHttpServer\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Nevay\\OTelInstrumentation\\AmphpHttpServer\\": "tests/"
+    }
+  },
+  "extra": {
+    "branch-alias": {
+      "dev-main": "0.1.x-dev"
+    },
+    "spi": {
+      "OpenTelemetry\\API\\Instrumentation\\AutoInstrumentation\\Instrumentation": [
+        "Nevay\\OTelInstrumentation\\AmphpHttpServer\\AmphpHttpServerInstrumentation"
+      ],
+      "OpenTelemetry\\API\\Configuration\\Config\\ComponentProvider": [
+        "Nevay\\OTelInstrumentation\\AmphpHttpServer\\Config\\InstrumentationConfigurationAmphpHttpServerConfig",
+        "Nevay\\OTelInstrumentation\\AmphpHttpServer\\Config\\RouteResolverRequestAttribute"
+      ],
+      "OpenTelemetry\\API\\Configuration\\ConfigEnv\\EnvComponentLoader": [
+        "Nevay\\OTelInstrumentation\\AmphpHttpServer\\ConfigEnv\\InstrumentationConfigurationAmphpHttpServerConfig"
+      ]
+    }
+  }
+}
