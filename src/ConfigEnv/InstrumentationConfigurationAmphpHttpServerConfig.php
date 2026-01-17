@@ -18,7 +18,7 @@ final class InstrumentationConfigurationAmphpHttpServerConfig implements EnvComp
         $disabledInstrumentations = $env->list('OTEL_PHP_DISABLED_INSTRUMENTATIONS');
 
         return new AmphpHttpServerConfig(
-            enabled: !$disabledInstrumentations || !in_array('amphp-http-server', $disabledInstrumentations, true),
+            enabled: !$disabledInstrumentations || $disabledInstrumentations !== ['all'] && !in_array('amphp-http-server', $disabledInstrumentations, true),
         );
     }
 

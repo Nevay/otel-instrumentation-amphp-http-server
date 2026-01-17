@@ -54,4 +54,13 @@ final class ConfigTest extends TestCase {
         $this->assertInstanceOf(AmphpHttpServerConfig::class, $config);
         $this->assertFalse($config->enabled);
     }
+
+    public function testEnvDisabledAll(): void {
+        $result = Env::load(new EnvSourceReader([new ArrayEnvSource(['OTEL_PHP_DISABLED_INSTRUMENTATIONS' => 'all'])]));
+
+        $config = $result->configProperties->get(AmphpHttpServerConfig::class);
+
+        $this->assertInstanceOf(AmphpHttpServerConfig::class, $config);
+        $this->assertFalse($config->enabled);
+    }
 }
