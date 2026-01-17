@@ -17,6 +17,7 @@ use Amp\Socket\InternetAddress;
 use Amp\Socket\ResourceServerSocketFactory;
 use League\Uri\Http;
 use Nevay\OTelInstrumentation\AmphpHttpServer\TelemetryHandler\Metrics;
+use Nevay\OTelInstrumentation\AmphpHttpServer\TelemetryHandler\Tracing;
 use Nevay\OTelSDK\Metrics\Aggregation\DropAggregation;
 use Nevay\OTelSDK\Metrics\Data\Histogram;
 use Nevay\OTelSDK\Metrics\Data\Metric;
@@ -26,10 +27,12 @@ use Nevay\OTelSDK\Metrics\MetricExporter\InMemoryMetricExporter;
 use Nevay\OTelSDK\Metrics\MetricReader\PeriodicExportingMetricReader;
 use Nevay\OTelSDK\Metrics\MetricReader\PullMetricReader;
 use Nevay\OTelSDK\Metrics\View;
+use Nevay\OTelSDK\Trace\TracerProviderBuilder;
 use Psr\Log\LoggerInterface;
 use Revolt\EventLoop;
 use function Amp\delay;
 use function assert;
+use function count;
 use function is_array;
 
 final class MetricsTest extends AsyncTestCase {
@@ -162,6 +165,35 @@ final class MetricsTest extends AsyncTestCase {
         $this->assertInstanceOf(Sum::class, $metrics[0]->data);
         $this->assertSame(5, $metrics[0]->data->dataPoints[0]->value);
         $this->assertSame(0, $metrics[1]->data->dataPoints[0]->value);
+    }
+
+    public function testMetricsHaveTraceExemplars(): void {
+        $tracerProvider = (new TracerProviderBuilder())
+            ->build();
+        $meterProvider = (new MeterProviderBuilder())
+            ->addMetricReader(new PeriodicExportingMetricReader($exporter = new InMemoryMetricExporter()))
+            ->build();
+
+        $server = $this->startServer([new Tracing($tracerProvider), new Metrics($meterProvider)]);
+
+        try {
+            $this->request($server, new Request('/foo'));
+        } finally {
+            $server->stop();
+            $meterProvider->shutdown();
+        }
+
+        $metrics = $exporter->collect();
+        $this->assertNotEmpty($metrics);
+
+        foreach ($metrics as $metric) {
+            foreach ($metric->data->dataPoints as $dataPoint) {
+                $this->assertNotEmpty($dataPoint->exemplars);
+                foreach ($dataPoint->exemplars as $exemplar) {
+                    $this->assertNotNull($exemplar->spanContext);
+                }
+            }
+        }
     }
 
     private function startServer(TelemetryHandler|array $handler, ?RequestHandler $requestHandler = null): HttpServer {
