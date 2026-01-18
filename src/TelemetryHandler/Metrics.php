@@ -155,6 +155,12 @@ final class Metrics implements TelemetryHandler {
         $host ??= $request->getHeader('Host');
         try {
             $components = UriString::parseAuthority($host);
+            $components['port'] ??= match ($request->getUri()->getScheme()) {
+                'https' => 443,
+                'http' => 80,
+                default => null,
+            };
+
             $serverAddress = $components['host'];
             $serverPort = $components['port'];
         } catch (SyntaxError) {}

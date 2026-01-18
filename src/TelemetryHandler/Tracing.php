@@ -187,6 +187,12 @@ final class Tracing implements TelemetryHandler {
         $host ??= $request->getHeader('host');
         try {
             $components = UriString::parseAuthority($host);
+            $components['port'] ??= match ($request->getUri()->getScheme()) {
+                'https' => 443,
+                'http' => 80,
+                default => null,
+            };
+
             $spanBuilder->setAttribute('server.address', $components['host']);
             $spanBuilder->setAttribute('server.port', $components['port']);
         } catch (SyntaxError) {}
