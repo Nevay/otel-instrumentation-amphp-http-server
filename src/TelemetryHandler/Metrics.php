@@ -15,6 +15,7 @@ use OpenTelemetry\API\Metrics\HistogramInterface;
 use OpenTelemetry\API\Metrics\MeterProviderInterface;
 use OpenTelemetry\API\Metrics\UpDownCounterInterface;
 use OpenTelemetry\Context\ContextInterface;
+use OpenTelemetry\Contrib\Instrumentation\HttpConfig\HttpConfig;
 use Throwable;
 use function array_combine;
 use function hrtime;
@@ -30,7 +31,7 @@ final class Metrics implements TelemetryHandler {
 
     public function __construct(
         MeterProviderInterface $meterProvider,
-        array $knownMethods = ['CONNECT', 'DELETE', 'GET', 'HEAD', 'OPTIONS', 'PATCH', 'POST', 'PUT', 'TRACE'],
+        array $knownMethods = HttpConfig::HTTP_METHODS,
         private readonly RouteResolver $routeResolver = new CompositeRouteResolver(),
     ) {
         $meter = $meterProvider->getMeter(

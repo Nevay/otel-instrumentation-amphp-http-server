@@ -22,6 +22,7 @@ use OpenTelemetry\API\Trace\StatusCode;
 use OpenTelemetry\API\Trace\TracerInterface;
 use OpenTelemetry\API\Trace\TracerProviderInterface;
 use OpenTelemetry\Context\ContextInterface;
+use OpenTelemetry\Contrib\Instrumentation\HttpConfig\HttpConfig;
 use OpenTelemetry\Contrib\Instrumentation\HttpConfig\HttpServerConfig;
 use OpenTelemetry\Contrib\Instrumentation\HttpConfig\UriSanitizer;
 use OpenTelemetry\Contrib\Instrumentation\HttpConfig\UriSanitizer\DefaultSanitizer;
@@ -44,7 +45,7 @@ final class Tracing implements TelemetryHandler {
         TracerProviderInterface $tracerProvider,
         array $requestHeaders = [],
         array $responseHeaders = [],
-        array $knownMethods = ['CONNECT', 'DELETE', 'GET', 'HEAD', 'OPTIONS', 'PATCH', 'POST', 'PUT', 'TRACE'],
+        array $knownMethods = HttpConfig::HTTP_METHODS,
         private readonly HttpServerConfig $config = new HttpServerConfig(),
         private readonly UriSanitizer $sanitizer = new DefaultSanitizer(),
         private readonly RouteResolver $routeResolver = new CompositeRouteResolver(),
