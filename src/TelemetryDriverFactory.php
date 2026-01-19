@@ -12,8 +12,7 @@ use Nevay\OTelInstrumentation\AmphpHttpServer\Internal\TelemetryRequestHandler;
 final class TelemetryDriverFactory implements HttpDriverFactory {
 
     /**
-     * @param HttpDriverFactory $httpDriverFactory
-     * @param array<TelemetryHandler> $handlers
+     * @param list<TelemetryHandler> $handlers
      */
     public function __construct(
         private readonly HttpDriverFactory $httpDriverFactory,
