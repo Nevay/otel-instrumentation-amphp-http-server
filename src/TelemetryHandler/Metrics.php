@@ -97,7 +97,7 @@ final class Metrics implements TelemetryHandler {
 
         $attributes['network.protocol.version'] = $request->getProtocolVersion();
         $attributes['http.response.status_code'] = $response->getStatus();
-        if ($response->getStatus() >= 500) {
+        if ($response->isServerError()) {
             $attributes['error.type'] = (string) $response->getStatus();
         }
 

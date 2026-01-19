@@ -104,7 +104,7 @@ final class Tracing implements TelemetryHandler {
 
         $this->populateHeaderAttributes($span, $response, $this->responseHeaderAttributes);
         $span->setAttribute('http.response.status_code', $response->getStatus());
-        if ($response->getStatus() >= 500) {
+        if ($response->isServerError()) {
             $span->setStatus(StatusCode::STATUS_ERROR);
             $span->setAttribute('error.type', (string) $response->getStatus());
         }
