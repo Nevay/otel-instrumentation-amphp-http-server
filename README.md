@@ -32,6 +32,7 @@ OTEL_PHP_DISABLED_INSTRUMENTATIONS=amphp-http-server
 use Amp\Http\Server\Driver\DefaultHttpDriverFactory;
 use Amp\Http\Server\SocketHttpServer;
 use Nevay\OTelInstrumentation\AmphpHttpServer\TelemetryDriverFactory;
+use Nevay\OTelInstrumentation\AmphpHttpServer\TelemetryHandler\Logs;
 use Nevay\OTelInstrumentation\AmphpHttpServer\TelemetryHandler\Metrics;
 use Nevay\OTelInstrumentation\AmphpHttpServer\TelemetryHandler\RequestPropagator;
 use Nevay\OTelInstrumentation\AmphpHttpServer\TelemetryHandler\ResponsePropagator;
@@ -46,9 +47,10 @@ $httpServer = new SocketHttpServer(
             new ResponsePropagator($responsePropagator),
             new Tracing($tracerProvider),
             new Metrics($meterProvider),
+            new Logs($loggerProvider),
         ],
     ),
-)
+);
 ```
 
 [amphp/http-server]: https://github.com/amphp/http-server

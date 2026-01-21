@@ -20,7 +20,7 @@ final class InstrumentationConfigurationAmphpHttpServerConfig implements Compone
     /**
      * @param array{
      *     enabled: bool,
-     *     route_resolvers: ?list<ComponentPlugin<RouteResolver>>,
+     *     route_resolvers: list<ComponentPlugin<RouteResolver>>,
      * } $properties
      */
     public function createPlugin(array $properties, Context $context): InstrumentationConfiguration {

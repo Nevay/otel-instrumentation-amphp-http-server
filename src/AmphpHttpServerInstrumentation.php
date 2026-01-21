@@ -4,6 +4,7 @@ namespace Nevay\OTelInstrumentation\AmphpHttpServer;
 use Amp\Http\Server\Driver\DefaultHttpDriverFactory;
 use Amp\Http\Server\Driver\HttpDriverFactory;
 use Amp\Http\Server\SocketHttpServer;
+use Nevay\OTelInstrumentation\AmphpHttpServer\TelemetryHandler\Logs;
 use Nevay\OTelInstrumentation\AmphpHttpServer\TelemetryHandler\Metrics;
 use Nevay\OTelInstrumentation\AmphpHttpServer\TelemetryHandler\RequestPropagator;
 use Nevay\OTelInstrumentation\AmphpHttpServer\TelemetryHandler\ResponsePropagator;
@@ -45,6 +46,9 @@ final class AmphpHttpServerInstrumentation implements Instrumentation {
                 meterProvider: $context->meterProvider,
                 knownMethods: $phpHttpConfig->knownHttpMethods,
                 routeResolver: $config->routeResolver,
+            ),
+            new Logs(
+                loggerProvider: $context->loggerProvider,
             ),
         ];
 

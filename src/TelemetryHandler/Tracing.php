@@ -127,7 +127,6 @@ final class Tracing implements TelemetryHandler {
             ));
         }
 
-        $span->recordException($e);
         $span->setStatus(StatusCode::STATUS_ERROR, $e->getMessage());
         $span->setAttribute('error.type', $e::class);
 
