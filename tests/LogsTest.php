@@ -26,7 +26,7 @@ use Nevay\OTelSDK\Logs\LoggerConfig;
 use Nevay\OTelSDK\Logs\LoggerProviderBuilder;
 use Nevay\OTelSDK\Logs\LogRecordExporter\InMemoryLogRecordExporter;
 use Nevay\OTelSDK\Logs\LogRecordProcessor\BatchLogRecordProcessor;
-use Nevay\OTelSDK\Trace\Sampler\Composable\ComposableAlwaysOffSampler;
+use Nevay\OTelSDK\Trace\Sampler\Composable\ComposableAlwaysOnSampler;
 use Nevay\OTelSDK\Trace\Sampler\CompositeSampler;
 use Nevay\OTelSDK\Trace\TracerProviderBuilder;
 use Psr\Log\LoggerInterface;
@@ -98,7 +98,7 @@ final class LogsTest extends AsyncTestCase {
 
     public function testTraceBasedLog(): void {
         $tracerProvider = (new TracerProviderBuilder())
-            ->setSampler(new CompositeSampler(new ComposableAlwaysOffSampler()))
+            ->setSampler(new CompositeSampler(new ComposableAlwaysOnSampler()))
             ->build();
         $loggerProvider = (new LoggerProviderBuilder())
             ->addLogRecordProcessor(new BatchLogRecordProcessor($exporter = new InMemoryLogRecordExporter()))

@@ -29,7 +29,10 @@
   "autoload": {
     "psr-4": {
       "Nevay\\OTelInstrumentation\\AmphpHttpServer\\": "src/"
-    }
+    },
+    "files": [
+        "_register.php"
+    ]
   },
   "autoload-dev": {
     "psr-4": {
@@ -40,17 +43,8 @@
     "branch-alias": {
       "dev-main": "0.1.x-dev"
     },
-    "spi": {
-      "OpenTelemetry\\API\\Instrumentation\\AutoInstrumentation\\Instrumentation": [
-        "Nevay\\OTelInstrumentation\\AmphpHttpServer\\AmphpHttpServerInstrumentation"
-      ],
-      "OpenTelemetry\\API\\Configuration\\Config\\ComponentProvider": [
-        "Nevay\\OTelInstrumentation\\AmphpHttpServer\\Config\\InstrumentationConfigurationAmphpHttpServerConfig",
-        "Nevay\\OTelInstrumentation\\AmphpHttpServer\\Config\\RouteResolverRequestAttribute"
-      ],
-      "OpenTelemetry\\API\\Configuration\\ConfigEnv\\EnvComponentLoader": [
-        "Nevay\\OTelInstrumentation\\AmphpHttpServer\\ConfigEnv\\InstrumentationConfigurationAmphpHttpServerConfig"
-      ]
+    "spi-config": {
+        "autoload-files": true
     }
   }
 }
