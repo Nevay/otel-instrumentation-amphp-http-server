@@ -5,7 +5,6 @@ use League\Uri\UriTemplate;
 use Nevay\OTelInstrumentation\AmphpHttpServer\RouteResolver\CompositeRouteResolver;
 use Nevay\OTelInstrumentation\AmphpHttpServer\RouteResolver\RequestAttributeResolver;
 use Nevay\OTelSDK\Configuration\Config;
-use Nevay\OTelSDK\Configuration\Env;
 use Nevay\OTelSDK\Configuration\Env\ArrayEnvSource;
 use Nevay\OTelSDK\Configuration\Env\EnvSourceReader;
 use PHPUnit\Framework\TestCase;
@@ -38,7 +37,7 @@ final class ConfigTest extends TestCase {
     }
 
     public function testEnv(): void {
-        $result = Env::load(new EnvSourceReader([new ArrayEnvSource([])]));
+        $result = Config::loadFromEnv(new EnvSourceReader([new ArrayEnvSource([])]));
 
         $config = $result->configProperties->get(AmphpHttpServerConfig::class);
 
@@ -47,7 +46,7 @@ final class ConfigTest extends TestCase {
     }
 
     public function testEnvDisabled(): void {
-        $result = Env::load(new EnvSourceReader([new ArrayEnvSource(['OTEL_PHP_DISABLED_INSTRUMENTATIONS' => 'amphp-http-server'])]));
+        $result = Config::loadFromEnv(new EnvSourceReader([new ArrayEnvSource(['OTEL_PHP_DISABLED_INSTRUMENTATIONS' => 'amphp-http-server'])]));
 
         $config = $result->configProperties->get(AmphpHttpServerConfig::class);
 
@@ -56,7 +55,7 @@ final class ConfigTest extends TestCase {
     }
 
     public function testEnvDisabledAll(): void {
-        $result = Env::load(new EnvSourceReader([new ArrayEnvSource(['OTEL_PHP_DISABLED_INSTRUMENTATIONS' => 'all'])]));
+        $result = Config::loadFromEnv(new EnvSourceReader([new ArrayEnvSource(['OTEL_PHP_DISABLED_INSTRUMENTATIONS' => 'all'])]));
 
         $config = $result->configProperties->get(AmphpHttpServerConfig::class);
 
