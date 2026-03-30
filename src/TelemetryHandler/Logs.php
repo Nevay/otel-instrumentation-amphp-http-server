@@ -21,7 +21,7 @@ final class Logs implements TelemetryHandler {
         $this->logger = $loggerProvider->getLogger(
             'tbachert/otel-instrumentation-amphp-http-server',
             InstalledVersions::getPrettyVersion('tbachert/otel-instrumentation-amphp-http-server'),
-            'https://opentelemetry.io/schemas/1.39.0',
+            'https://opentelemetry.io/schemas/1.40.0',
         );
     }
 
@@ -36,7 +36,7 @@ final class Logs implements TelemetryHandler {
     public function handleError(Throwable $e, Request $request, ContextInterface $context): void {
         $this->logger
             ->logRecordBuilder()
-            ->setEventName('http.server.request.error')
+            ->setEventName('http.server.request.exception')
             ->setSeverityNumber(Severity::ERROR)
             ->setException($e)
             ->setContext($context)

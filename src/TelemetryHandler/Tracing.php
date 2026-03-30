@@ -53,7 +53,7 @@ final class Tracing implements TelemetryHandler {
         $this->tracer = $tracerProvider->getTracer(
             'tbachert/otel-instrumentation-amphp-http-server',
             InstalledVersions::getPrettyVersion('tbachert/otel-instrumentation-amphp-http-server'),
-            'https://opentelemetry.io/schemas/1.39.0',
+            'https://opentelemetry.io/schemas/1.40.0',
         );
         $this->requestHeaderAttributes = self::prepareHeaderAttributes($requestHeaders, 'request');
         $this->responseHeaderAttributes = self::prepareHeaderAttributes($responseHeaders, 'response');

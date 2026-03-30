@@ -37,7 +37,7 @@ final class Metrics implements TelemetryHandler {
         $meter = $meterProvider->getMeter(
             'tbachert/otel-instrumentation-amphp-http-server',
             InstalledVersions::getPrettyVersion('tbachert/otel-instrumentation-amphp-http-server'),
-            'https://opentelemetry.io/schemas/1.39.0',
+            'https://opentelemetry.io/schemas/1.40.0',
         );
         $this->requestDuration = $meter->createHistogram(
             'http.server.request.duration',
