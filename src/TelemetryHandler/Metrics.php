@@ -116,7 +116,7 @@ final class Metrics implements TelemetryHandler {
     public function handleError(Throwable $e, Request $request, ContextInterface $context): void {
         $attributes = $this->basicRequestAttributes($request);
 
-        $this->activeRequests->add(-1, $attributes);
+        $this->activeRequests->add(-1, $attributes, $context);
 
         $attributes['network.protocol.version'] = $request->getProtocolVersion();
         $attributes['error.type'] = $e::class;
