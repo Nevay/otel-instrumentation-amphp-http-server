@@ -22,6 +22,9 @@ use function hrtime;
 
 final class Metrics implements TelemetryHandler {
 
+    private const REQUEST_ATTRIBUTES = '__otel_request_attributes';
+    private const REQUEST_START_TIMESTAMP = '__otel_request_start_timestamp';
+
     private readonly HistogramInterface $requestDuration;
     private readonly UpDownCounterInterface $activeRequests;
     private readonly HistogramInterface $requestBodySize;
@@ -76,21 +79,22 @@ final class Metrics implements TelemetryHandler {
     }
 
     public function handleRequest(Request $request, ContextInterface $context): ContextInterface {
-        $request->setAttribute(Metrics::class, hrtime(true));
-
         $attributes = $this->basicRequestAttributes($request);
 
         $this->activeRequests->add(1, $attributes, $context);
+
+        $request->setAttribute(self::REQUEST_START_TIMESTAMP, hrtime(true));
+        $request->setAttribute(self::REQUEST_ATTRIBUTES, $attributes);
 
         return $context;
     }
 
     public function handleResponse(Response $response, Request $request, ContextInterface $context): void {
-        $attributes = $this->basicRequestAttributes($request);
-
         $activeRequests = $this->activeRequests;
+        $attributes = $request->getAttribute(self::REQUEST_ATTRIBUTES);
         $response->onDispose(static fn() => $activeRequests->add(-1, $attributes, $context));
 
+        $attributes = $this->basicRequestAttributes($request);
         if (($route = $this->routeResolver->resolveRoute($request)) !== null) {
             $attributes['http.route'] = $route;
         }
@@ -101,7 +105,7 @@ final class Metrics implements TelemetryHandler {
             $attributes['error.type'] = (string) $response->getStatus();
         }
 
-        $start = $request->getAttribute(Metrics::class);
+        $start = $request->getAttribute(self::REQUEST_START_TIMESTAMP);
         $requestDuration = $this->requestDuration;
         $response->onDispose(static fn() => $requestDuration->record((hrtime(true) - $start) / 1e9, $attributes, $context));
 
@@ -114,14 +118,13 @@ final class Metrics implements TelemetryHandler {
     }
 
     public function handleError(Throwable $e, Request $request, ContextInterface $context): void {
+        $this->activeRequests->add(-1, $request->getAttribute(self::REQUEST_ATTRIBUTES), $context);
+
         $attributes = $this->basicRequestAttributes($request);
-
-        $this->activeRequests->add(-1, $attributes, $context);
-
         $attributes['network.protocol.version'] = $request->getProtocolVersion();
         $attributes['error.type'] = $e::class;
 
-        $start = $request->getAttribute(Metrics::class);
+        $start = $request->getAttribute(self::REQUEST_START_TIMESTAMP);
         $end = hrtime(true);
         $this->requestDuration->record(($end - $start) / 1e9, $attributes, $context);
 
@@ -136,6 +139,7 @@ final class Metrics implements TelemetryHandler {
      */
     private function basicRequestAttributes(Request $request): array {
         $requestMethod = $this->knownMethods[$request->getMethod()] ?? '_OTHER';
+        $urlScheme = $request->getUri()->getScheme();
         $serverAddress = null;
         $serverPort = null;
 
@@ -146,20 +150,19 @@ final class Metrics implements TelemetryHandler {
         }
 
         $host = null;
-        if ($request->hasAttribute(Forwarded::class)) {
+        if ($request->hasAttribute(Forwarded::class) && $forwarded = $request->getAttribute(Forwarded::class)) {
             /** @var Forwarded $forwarded */
-            $forwarded = $request->getAttribute(Forwarded::class);
             $host = $forwarded->getField('host');
+
+            if (($proto = $forwarded->getField('proto')) !== null) {
+                $urlScheme = $proto;
+            }
         }
         $host ??= $request->getHeader(':authority');
         $host ??= $request->getHeader('Host');
         try {
             $components = UriString::parseAuthority($host);
-            $components['port'] ??= match ($request->getUri()->getScheme()) {
-                'https' => 443,
-                'http' => 80,
-                default => null,
-            };
+            $components['port'] ??= null;
 
             $serverAddress = $components['host'];
             $serverPort = $components['port'];
@@ -169,7 +172,7 @@ final class Metrics implements TelemetryHandler {
             'http.request.method' => $requestMethod,
             'server.address' => $serverAddress,
             'server.port' => $serverPort,
-            'url.scheme' => $request->getUri()->getScheme(),
+            'url.scheme' => $urlScheme,
         ];
     }
 }
