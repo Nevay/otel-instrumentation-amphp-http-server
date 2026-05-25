@@ -102,6 +102,7 @@ final class Tracing implements TelemetryHandler {
             ));
         }
 
+        $this->populateOriginalAddress($span, $request);
         $this->populateHeaderAttributes($span, $response, $this->responseHeaderAttributes);
         $span->setAttribute('http.response.status_code', $response->getStatus());
         if ($response->isServerError()) {
@@ -126,6 +127,8 @@ final class Tracing implements TelemetryHandler {
                 $route,
             ));
         }
+
+        $this->populateOriginalAddress($span, $request);
 
         $span->setStatus(StatusCode::STATUS_ERROR, $e->getMessage());
         $span->setAttribute('error.type', $e::class);
@@ -170,30 +173,29 @@ final class Tracing implements TelemetryHandler {
         }
     }
 
-    private function populateOriginalAddress(SpanBuilderInterface $spanBuilder, Request $request): void {
+    private function populateOriginalAddress(SpanBuilderInterface|SpanInterface $span, Request $request): void {
         $host = null;
-        if ($request->hasAttribute(Forwarded::class)) {
+        if ($request->hasAttribute(Forwarded::class) && $forwarded = $request->getAttribute(Forwarded::class)) {
             /** @var Forwarded $forwarded */
-            $forwarded = $request->getAttribute(Forwarded::class);
-            $spanBuilder->setAttribute('client.address', $forwarded->getFor()->getAddress());
+            $span->setAttribute('client.address', $forwarded->getFor()->getAddress());
             if ($this->config->captureClientPort) {
-                $spanBuilder->setAttribute('client.port', $forwarded->getFor()->getPort());
+                $span->setAttribute('client.port', $forwarded->getFor()->getPort());
             }
 
             $host = $forwarded->getField('host');
+
+            if (($proto = $forwarded->getField('proto')) !== null) {
+                $span->setAttribute('url.scheme', $proto);
+            }
         }
         $host ??= $request->getHeader(':authority');
         $host ??= $request->getHeader('host');
         try {
             $components = UriString::parseAuthority($host);
-            $components['port'] ??= match ($request->getUri()->getScheme()) {
-                'https' => 443,
-                'http' => 80,
-                default => null,
-            };
+            $components['port'] ??= null;
 
-            $spanBuilder->setAttribute('server.address', $components['host']);
-            $spanBuilder->setAttribute('server.port', $components['port']);
+            $span->setAttribute('server.address', $components['host']);
+            $span->setAttribute('server.port', $components['port']);
         } catch (SyntaxError) {}
     }
 

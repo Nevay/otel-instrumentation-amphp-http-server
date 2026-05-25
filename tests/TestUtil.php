@@ -9,6 +9,8 @@ use Amp\Http\Server\Driver\DefaultHttpDriverFactory;
 use Amp\Http\Server\Driver\SocketClientFactory;
 use Amp\Http\Server\ErrorHandler;
 use Amp\Http\Server\HttpServer;
+use Amp\Http\Server\Middleware\ForwardedHeaderType;
+use Amp\Http\Server\Middleware\ForwardedMiddleware;
 use Amp\Http\Server\RequestHandler;
 use Amp\Http\Server\RequestHandler\ClosureRequestHandler;
 use Amp\Http\Server\Response;
@@ -33,6 +35,9 @@ final class TestUtil {
             $logger,
             new ResourceServerSocketFactory(),
             new SocketClientFactory($logger),
+            middleware: [
+                new ForwardedMiddleware(headerType: ForwardedHeaderType::Forwarded, trustedProxies: ['127.0.0.1/32'])
+            ],
             httpDriverFactory: new TelemetryDriverFactory(new DefaultHttpDriverFactory($logger), $handler),
         );
         $server->expose('127.0.0.1:0');

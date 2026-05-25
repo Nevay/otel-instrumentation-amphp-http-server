@@ -190,4 +190,31 @@ final class TracingTest extends AsyncTestCase {
         $this->assertSame('500', $attributes->get('error.type'));
         $this->assertSame(500, $attributes->get('http.response.status_code'));
     }
+
+    public function testUsesForwardedHeaderForServerAddress(): void {
+        $tracerProvider = (new TracerProviderBuilder())
+            ->addSpanProcessor(new BatchSpanProcessor($exporter = new InMemorySpanExporter()))
+            ->build();
+
+        $server = TestUtil::startServer(new Tracing($tracerProvider));
+
+        $request = new Request('/foo');
+        $request->setHeader('forwarded', 'for=192.0.2.60;proto=https;host=192.1.2.32');
+
+        try {
+            TestUtil::request($server, $request);
+        } finally {
+            $server->stop();
+            $tracerProvider->shutdown();
+        }
+
+        $spans = $exporter->collect(true);
+        $this->assertCount(1, $spans);
+
+        $attributes = $spans[0]->getAttributes();
+        $this->assertSame('192.0.2.60', $attributes->get('client.address'));
+        $this->assertSame('https', $attributes->get('url.scheme'));
+        $this->assertSame('192.1.2.32', $attributes->get('server.address'));
+        $this->assertSame(null, $attributes->get('server.port'));
+    }
 }
