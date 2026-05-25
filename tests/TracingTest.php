@@ -1,21 +1,12 @@
-<?php /** @noinspection HttpUrlsUsage */ declare(strict_types=1);
+<?php declare(strict_types=1);
 namespace Nevay\OTelInstrumentation\AmphpHttpServer;
 
-use Amp\Cancellation;
-use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;
-use Amp\Http\Server\DefaultErrorHandler;
-use Amp\Http\Server\Driver\DefaultHttpDriverFactory;
-use Amp\Http\Server\Driver\SocketClientFactory;
-use Amp\Http\Server\HttpServer;
-use Amp\Http\Server\RequestHandler;
+use Amp\Http\HttpStatus;
 use Amp\Http\Server\RequestHandler\ClosureRequestHandler;
 use Amp\Http\Server\Response;
-use Amp\Http\Server\SocketHttpServer;
 use Amp\PHPUnit\AsyncTestCase;
 use Amp\Socket\InternetAddress;
-use Amp\Socket\ResourceServerSocketFactory;
-use League\Uri\Http;
 use League\Uri\UriTemplate;
 use LogicException;
 use Nevay\OTelInstrumentation\AmphpHttpServer\RouteResolver\RequestAttributeResolver;
@@ -30,10 +21,8 @@ use OpenTelemetry\API\Trace\Propagation\TraceContextPropagator;
 use OpenTelemetry\API\Trace\Span;
 use OpenTelemetry\API\Trace\SpanInterface;
 use OpenTelemetry\Contrib\Propagation\TraceResponse\TraceResponsePropagator;
-use Psr\Log\LoggerInterface;
 use function assert;
 use function hex2bin;
-use function is_array;
 
 final class TracingTest extends AsyncTestCase {
 
@@ -42,12 +31,12 @@ final class TracingTest extends AsyncTestCase {
             ->addSpanProcessor(new BatchSpanProcessor($exporter = new InMemorySpanExporter()))
             ->build();
 
-        $server = $this->startServer(new Tracing($tracerProvider));
+        $server = TestUtil::startServer(new Tracing($tracerProvider));
         $address = $server->getServers()[0]->getAddress();
         assert($address instanceof InternetAddress);
 
         try {
-            $this->request($server, new Request('/foo'));
+            TestUtil::request($server, new Request('/foo'));
         } finally {
             $server->stop();
             $tracerProvider->shutdown();
@@ -72,7 +61,7 @@ final class TracingTest extends AsyncTestCase {
             ->addSpanProcessor(new BatchSpanProcessor($exporter = new InMemorySpanExporter()))
             ->build();
 
-        $server = $this->startServer(new Tracing($tracerProvider, routeResolver: new RequestAttributeResolver(UriTemplate::class)), new ClosureRequestHandler(static function(\Amp\Http\Server\Request $request): Response {
+        $server = TestUtil::startServer(new Tracing($tracerProvider, routeResolver: new RequestAttributeResolver(UriTemplate::class)), new ClosureRequestHandler(static function (\Amp\Http\Server\Request $request): Response {
             $request->setAttribute(UriTemplate::class, new UriTemplate('/{param}'));
 
             return new Response();
@@ -81,7 +70,7 @@ final class TracingTest extends AsyncTestCase {
         assert($address instanceof InternetAddress);
 
         try {
-            $this->request($server, new Request('/foo'));
+            TestUtil::request($server, new Request('/foo'));
         } finally {
             $server->stop();
             $tracerProvider->shutdown();
@@ -101,13 +90,13 @@ final class TracingTest extends AsyncTestCase {
             ->addSpanProcessor(new BatchSpanProcessor($exporter = new InMemorySpanExporter()))
             ->build();
 
-        $server = $this->startServer([new RequestPropagator(new TraceContextPropagator()), new Tracing($tracerProvider)]);
+        $server = TestUtil::startServer([new RequestPropagator(new TraceContextPropagator()), new Tracing($tracerProvider)]);
 
         $request = new Request('/foo');
         $request->setHeader('traceparent', '00-ac0a7f8c2faac49775a616b7c0cc21d8-43b34e9afb52a2db-01');
 
         try {
-            $this->request($server, $request);
+            TestUtil::request($server, $request);
         } finally {
             $server->stop();
             $tracerProvider->shutdown();
@@ -126,12 +115,13 @@ final class TracingTest extends AsyncTestCase {
             ->addSpanProcessor(new BatchSpanProcessor($exporter = new InMemorySpanExporter()))
             ->build();
 
-        $server = $this->startServer(new Tracing($tracerProvider), new ClosureRequestHandler(static function() use (&$span): void {
+        $server = TestUtil::startServer(new Tracing($tracerProvider), new ClosureRequestHandler(static function () use (&$span): Response {
             $span = Span::getCurrent();
+            return new Response(HttpStatus::OK);
         }));
 
         try {
-            $this->request($server, new Request('/foo'));
+            TestUtil::request($server, new Request('/foo'));
         } finally {
             $server->stop();
             $tracerProvider->shutdown();
@@ -163,10 +153,10 @@ final class TracingTest extends AsyncTestCase {
             })
             ->build();
 
-        $server = $this->startServer([new Tracing($tracerProvider), new ResponsePropagator(new TraceResponsePropagator())]);
+        $server = TestUtil::startServer([new Tracing($tracerProvider), new ResponsePropagator(new TraceResponsePropagator())]);
 
         try {
-            $response = $this->request($server, new Request('/foo'));
+            $response = TestUtil::request($server, new Request('/foo'));
         } finally {
             $server->stop();
             $tracerProvider->shutdown();
@@ -184,10 +174,10 @@ final class TracingTest extends AsyncTestCase {
             ->addSpanProcessor(new BatchSpanProcessor($exporter = new InMemorySpanExporter()))
             ->build();
 
-        $server = $this->startServer(new Tracing($tracerProvider), new ClosureRequestHandler(static fn() => throw new LogicException()));
+        $server = TestUtil::startServer(new Tracing($tracerProvider), new ClosureRequestHandler(static fn() => throw new LogicException()));
 
         try {
-            $this->request($server, new Request('/foo'));
+            TestUtil::request($server, new Request('/foo'));
         } finally {
             $server->stop();
             $tracerProvider->shutdown();
@@ -199,31 +189,5 @@ final class TracingTest extends AsyncTestCase {
         $attributes = $spans[0]->getAttributes();
         $this->assertSame('500', $attributes->get('error.type'));
         $this->assertSame(500, $attributes->get('http.response.status_code'));
-    }
-
-    private function startServer(TelemetryHandler|array $handler, ?RequestHandler $requestHandler = null): HttpServer {
-        $requestHandler ??= new ClosureRequestHandler(static fn(): Response => new Response());
-
-        if (!is_array($handler)) {
-            $handler = [$handler];
-        }
-
-        $server = new SocketHttpServer(
-            $this->createMock(LoggerInterface::class),
-            new ResourceServerSocketFactory(),
-            new SocketClientFactory($this->createMock(LoggerInterface::class)),
-            httpDriverFactory: new TelemetryDriverFactory(new DefaultHttpDriverFactory($this->createMock(LoggerInterface::class)), $handler),
-        );
-        $server->expose('127.0.0.1:0');
-        $server->start($requestHandler, new DefaultErrorHandler());
-
-        return $server;
-    }
-
-    private function request(HttpServer $server, Request $request, ?Cancellation $cancellation = null): \Amp\Http\Client\Response {
-        $address = $server->getServers()[0]->getAddress();
-        $request->setUri(Http::parse($request->getUri(), "http://$address"));
-
-        return HttpClientBuilder::buildDefault()->request($request, $cancellation);
     }
 }

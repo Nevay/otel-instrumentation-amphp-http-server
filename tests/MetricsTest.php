@@ -1,21 +1,11 @@
 <?php /** @noinspection HttpUrlsUsage */ declare(strict_types=1);
 namespace Nevay\OTelInstrumentation\AmphpHttpServer;
 
-use Amp\Cancellation;
-use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;
-use Amp\Http\Server\DefaultErrorHandler;
-use Amp\Http\Server\Driver\DefaultHttpDriverFactory;
-use Amp\Http\Server\Driver\SocketClientFactory;
-use Amp\Http\Server\HttpServer;
-use Amp\Http\Server\RequestHandler;
 use Amp\Http\Server\RequestHandler\ClosureRequestHandler;
 use Amp\Http\Server\Response;
-use Amp\Http\Server\SocketHttpServer;
 use Amp\PHPUnit\AsyncTestCase;
 use Amp\Socket\InternetAddress;
-use Amp\Socket\ResourceServerSocketFactory;
-use League\Uri\Http;
 use Nevay\OTelInstrumentation\AmphpHttpServer\TelemetryHandler\Metrics;
 use Nevay\OTelInstrumentation\AmphpHttpServer\TelemetryHandler\Tracing;
 use Nevay\OTelSDK\Metrics\Aggregation\DropAggregation;
@@ -28,12 +18,9 @@ use Nevay\OTelSDK\Metrics\MetricReader\PeriodicExportingMetricReader;
 use Nevay\OTelSDK\Metrics\MetricReader\PullMetricReader;
 use Nevay\OTelSDK\Metrics\View;
 use Nevay\OTelSDK\Trace\TracerProviderBuilder;
-use Psr\Log\LoggerInterface;
 use Revolt\EventLoop;
 use function Amp\delay;
 use function assert;
-use function count;
-use function is_array;
 
 final class MetricsTest extends AsyncTestCase {
 
@@ -45,12 +32,12 @@ final class MetricsTest extends AsyncTestCase {
             ->addView(new View(aggregation: new DropAggregation()))
             ->build();
 
-        $server = $this->startServer(new Metrics($meterProvider));
+        $server = TestUtil::startServer(new Metrics($meterProvider));
         $address = $server->getServers()[0]->getAddress();
         assert($address instanceof InternetAddress);
 
         try {
-            $this->request($server, new Request('/foo'));
+            TestUtil::request($server, new Request('/foo'));
         } finally {
             $server->stop();
             $meterProvider->shutdown();
@@ -92,12 +79,12 @@ final class MetricsTest extends AsyncTestCase {
             ->addView(new View(aggregation: new DropAggregation()))
             ->build();
 
-        $server = $this->startServer(new Metrics($meterProvider));
+        $server = TestUtil::startServer(new Metrics($meterProvider));
         $address = $server->getServers()[0]->getAddress();
         assert($address instanceof InternetAddress);
 
         try {
-            $this->request($server, new Request('/foo'));
+            TestUtil::request($server, new Request('/foo'));
         } finally {
             $server->stop();
             $meterProvider->shutdown();
@@ -134,14 +121,14 @@ final class MetricsTest extends AsyncTestCase {
             ->addView(new View(aggregation: new DropAggregation()))
             ->build();
 
-        $server = $this->startServer(new Metrics($meterProvider), new ClosureRequestHandler(static function() use ($meterProvider): Response {
+        $server = TestUtil::startServer(new Metrics($meterProvider), new ClosureRequestHandler(static function () use ($meterProvider): Response {
             delay(0.1);
             return new Response();
         }));
 
         try {
             for ($i = 0; $i < 5; $i++) {
-                EventLoop::queue($this->request(...), $server, new Request('/foo'));
+                EventLoop::queue(TestUtil::request(...), $server, new Request('/foo'));
             }
 
             delay(0.05);
@@ -174,10 +161,10 @@ final class MetricsTest extends AsyncTestCase {
             ->addMetricReader(new PeriodicExportingMetricReader($exporter = new InMemoryMetricExporter()))
             ->build();
 
-        $server = $this->startServer([new Tracing($tracerProvider), new Metrics($meterProvider)]);
+        $server = TestUtil::startServer([new Tracing($tracerProvider), new Metrics($meterProvider)]);
 
         try {
-            $this->request($server, new Request('/foo'));
+            TestUtil::request($server, new Request('/foo'));
         } finally {
             $server->stop();
             $meterProvider->shutdown();
@@ -196,29 +183,4 @@ final class MetricsTest extends AsyncTestCase {
         }
     }
 
-    private function startServer(TelemetryHandler|array $handler, ?RequestHandler $requestHandler = null): HttpServer {
-        $requestHandler ??= new ClosureRequestHandler(static fn(): Response => new Response());
-
-        if (!is_array($handler)) {
-            $handler = [$handler];
-        }
-
-        $server = new SocketHttpServer(
-            $this->createMock(LoggerInterface::class),
-            new ResourceServerSocketFactory(),
-            new SocketClientFactory($this->createMock(LoggerInterface::class)),
-            httpDriverFactory: new TelemetryDriverFactory(new DefaultHttpDriverFactory($this->createMock(LoggerInterface::class)), $handler),
-        );
-        $server->expose('127.0.0.1:0');
-        $server->start($requestHandler, new DefaultErrorHandler());
-
-        return $server;
-    }
-
-    private function request(HttpServer $server, Request $request, ?Cancellation $cancellation = null): \Amp\Http\Client\Response {
-        $address = $server->getServers()[0]->getAddress();
-        $request->setUri(Http::parse($request->getUri(), "http://$address"));
-
-        return HttpClientBuilder::buildDefault()->request($request, $cancellation);
-    }
 }
