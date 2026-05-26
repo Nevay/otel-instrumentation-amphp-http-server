@@ -37,14 +37,14 @@ final class AmphpHttpServerInstrumentation implements Instrumentation {
                 tracerProvider: $context->tracerProvider,
                 requestHeaders: $generalHttpConfig['server']['request_captured_headers'] ?? [],
                 responseHeaders: $generalHttpConfig['server']['response_captured_headers'] ?? [],
-                knownMethods: $phpHttpConfig->knownHttpMethods,
+                knownMethods: $generalHttpConfig['server']['known_methods'] ?? $phpHttpConfig->knownHttpMethods,
                 config: $phpHttpConfig->server,
                 sanitizer: $phpHttpConfig->sanitizer,
                 routeResolver: $config->routeResolver,
             ),
             new Metrics(
                 meterProvider: $context->meterProvider,
-                knownMethods: $phpHttpConfig->knownHttpMethods,
+                knownMethods: $generalHttpConfig['server']['known_methods'] ?? $phpHttpConfig->knownHttpMethods,
                 routeResolver: $config->routeResolver,
             ),
             new Logs(
