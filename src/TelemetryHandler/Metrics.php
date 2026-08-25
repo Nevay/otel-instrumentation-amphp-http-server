@@ -53,7 +53,7 @@ final class Metrics implements TelemetryHandler {
         );
         $this->activeRequests = $meter->createUpDownCounter(
             'http.server.active_requests',
-            '{requests}',
+            '{request}',
             'Number of active HTTP server requests.',
             [
                 'Attributes' => ['http.request.method', 'url.scheme'],
